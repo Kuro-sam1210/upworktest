@@ -1,35 +1,5 @@
 import { apiInitializer } from "discourse/lib/api";
 
-console.log("✅ Aave Governance Widget: JavaScript file loaded!");
-
-/**
- * PLATFORM SUPPORT:
- * 
- * ✅ SNAPSHOT (snapshot.org)
- *    - Full support: Fetches proposal data, voting results, status
- *    - URL formats: snapshot.org/#/{space}/{proposal-id}
- *    - Stages: Temp Check, ARFC
- *    - Voting: Happens on Snapshot platform
- * 
- * ✅ AAVE GOVERNANCE (AIP - Aave Improvement Proposals)
- *    - URL recognition: ✅ Supported (robust extraction)
- *      - app.aave.com/governance/v3/proposal/?proposalId={id}
- *      - app.aave.com/governance/{id}
- *      - governance.aave.com/t/{slug}/{id}
- *      - vote.onaave.com/proposal/?proposalId={id}
- *    - Data fetching: ✅ Robust architecture
- *      - Flow: URL → extract proposalId → fetch on-chain (source of truth) → enrich with subgraph → render
- *      - Primary: On-chain data via ethers.js (no CORS, no API dependency, future-proof)
- *      - Enhancement: Subgraph for metadata (titles, descriptions)
- *      - Fallback: JSON Data API if on-chain unavailable
- *      - IMPORTANT: proposalId is the primary key - URL is only an identifier carrier
- *    - Benefits:
- *      - No CORS issues (direct blockchain access)
- *      - No backend required (pure frontend)
- *      - Future-proof (works even if APIs change)
- *      - Source of truth (on-chain data is authoritative)
- */
-
 export default apiInitializer((api) => {
   // CRITICAL: Force scroll to top (0, 0) on page load
   // User wants to stay at top, no auto-scroll to proposals
@@ -91,12 +61,9 @@ export default apiInitializer((api) => {
   // Also restore on any DOM mutations that might trigger scrolling
   const scrollRestoreOnMutation = () => {
     if (scrollLocked || widgetsInserting) {
-      // Use multiple methods to ensure scroll is restored
+      // Use requestAnimationFrame to ensure scroll is restored
       requestAnimationFrame(() => {
         restoreScroll();
-        setTimeout(() => restoreScroll(), 0);
-        setTimeout(() => restoreScroll(), 10);
-        setTimeout(() => restoreScroll(), 50);
       });
     }
   };
@@ -139,8 +106,6 @@ export default apiInitializer((api) => {
     });
   }
   
-  console.log("✅ Aave Governance Widget: apiInitializer called!");
-
   // Track errors that are being handled to avoid false positives in unhandled rejection handler
   const handledErrors = new WeakSet();
   
@@ -6043,6 +6008,29 @@ export default apiInitializer((api) => {
       });
     }
     
+    // Limit to most recent 3 proposals for each type
+    // Sort AIP proposals by proposal ID descending (higher ID = more recent)
+    proposals.aip = proposals.aip
+      .map(url => {
+        const match = url.match(/proposalId=(\d+)/);
+        const id = match ? parseInt(match[1]) : 0;
+        return { url, id };
+      })
+      .sort((a, b) => b.id - a.id)
+      .slice(0, 3)
+      .map(item => item.url);
+
+    // Sort Snapshot proposals by proposal ID descending
+    proposals.snapshot = proposals.snapshot
+      .map(url => {
+        const match = url.match(/\/([^\/]+)\/(\d+)$/);
+        const id = match ? parseInt(match[2]) : 0;
+        return { url, id };
+      })
+      .sort((a, b) => b.id - a.id)
+      .slice(0, 3)
+      .map(item => item.url);
+
     // If no proposals found, provide helpful debugging info
     if (proposals.snapshot.length === 0 && proposals.aip.length === 0 && proposals.forum.length === 0) {
       console.warn("⚠️ [TOPIC] No proposals found! This might mean:");

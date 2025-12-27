@@ -4,15 +4,19 @@
  * Fetches proposal data from The Graph subgraph for Aave Governance V3
  *
  * Usage:
- *   node fetch-aave-proposal.mjs [proposalId]
- *   node fetch-aave-proposal.mjs [url]
+ *   GRAPH_API_KEY=your_key node fetch-aave-proposal.mjs [proposalId]
+ *   GRAPH_API_KEY=your_key node fetch-aave-proposal.mjs [url]
  *
  * Examples:
- *   node fetch-aave-proposal.mjs 411
- *   node fetch-aave-proposal.mjs "https://app.aave.com/governance/v3/proposal/?proposalId=411"
+ *   GRAPH_API_KEY=your_key node fetch-aave-proposal.mjs 411
+ *   GRAPH_API_KEY=your_key node fetch-aave-proposal.mjs "https://app.aave.com/governance/v3/proposal/?proposalId=411"
  */
 
-const GRAPH_API_KEY = "9e7b4a29889ac6c358b235230a5fe940";
+const GRAPH_API_KEY = process.env.GRAPH_API_KEY;
+if (!GRAPH_API_KEY) {
+  console.error("❌ Error: GRAPH_API_KEY environment variable is required");
+  process.exit(1);
+}
 const SUBGRAPH_ID = "A7QMszgomC9cnnfpAcqZVLr2DffvkGNfimD8iUSMiurK";
 const SUBGRAPH_URL = `https://gateway.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/${SUBGRAPH_ID}`;
 
