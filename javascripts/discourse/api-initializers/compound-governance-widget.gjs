@@ -8812,13 +8812,22 @@ export default apiInitializer((api) => {
             // CRITICAL: Only show proposals that have a forum link matching the current forum topic
             // This prevents false positives when other proposal links are mentioned in discussions
             // Also filter out proposals without any discourse URL
-            if (!validation.isRelated) {
+            
+            // TEMPORARY: Disable validation for testing - always show widgets
+            const forceShowForTesting = true;
+            
+            if (!forceShowForTesting && !validation.isRelated) {
               if (validation.discussionLink) {
                 console.log(`⚠️ [RENDER] Skipping ${stageName} widget - discussion URL (${validation.discussionLink}) does not match current forum topic`);
               } else {
                 console.log(`⚠️ [RENDER] Skipping ${stageName} widget - no forum discussion link found in proposal (preventing false positives)`);
               }
               return;
+            }
+            
+            // TEMPORARY: For testing, if validation failed but we're forcing show, log it
+            if (forceShowForTesting && !validation.isRelated) {
+              console.log(`🧪 [TESTING] Validation failed but forcing widget display for ${stageName}`);
             }
             
             // Filter out proposals that don't have any discourse URL
@@ -9011,13 +9020,22 @@ export default apiInitializer((api) => {
               // CRITICAL: Only show proposals that have a forum link matching the current forum topic
               // This prevents false positives when other proposal links are mentioned in discussions
               // Also filter out proposals without any discourse URL
-              if (!validation.isRelated) {
+              
+              // TEMPORARY: Disable validation for testing - always show widgets
+              const forceShowForTesting = true;
+              
+              if (!forceShowForTesting && !validation.isRelated) {
                 if (validation.discussionLink) {
                   console.log(`⚠️ [RENDER] Skipping AIP widget - discussion URL (${validation.discussionLink}) does not match current forum topic`);
                 } else {
                   console.log(`⚠️ [RENDER] Skipping AIP widget - no forum discussion link found in proposal (preventing false positives)`);
                 }
                 return;
+              }
+              
+              // TEMPORARY: For testing, if validation failed but we're forcing show, log it
+              if (forceShowForTesting && !validation.isRelated) {
+                console.log(`🧪 [TESTING] Validation failed but forcing AIP widget display`);
               }
               
               // Filter out proposals that don't have any discourse URL
