@@ -10998,10 +10998,10 @@ export default apiInitializer((api) => {
     
     // Periodic check to ensure AIP widgets stay visible (prevents them from being hidden by other code)
     // CRITICAL: AIP widgets are topic-level and should ALWAYS be visible once found
-    // TEMPORARY: Make this extremely aggressive to test shaking effect (original had frequent DOM manipulation)
+    // Run more frequently to catch any hiding attempts immediately
     const aipVisibilityInterval = setInterval(() => {
       ensureAIPWidgetsVisible();
-    }, 50); // Check every 50ms (extremely aggressive - will cause DOM manipulation every 50ms)
+    }, 300); // Check every 300ms to keep AIP widgets visible (very aggressive)
     
     // Store interval ID so it can be cleared if needed (though it should run for the page lifetime)
     window._aipVisibilityInterval = aipVisibilityInterval;
