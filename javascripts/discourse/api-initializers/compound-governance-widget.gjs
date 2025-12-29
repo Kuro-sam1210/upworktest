@@ -6947,8 +6947,24 @@ export default apiInitializer((api) => {
     
     console.log(`🔵 [TOPIC] Found ${allProposals.snapshot.length} Snapshot URL(s) and ${allProposals.aip.length} AIP URL(s) directly in post`);
     
-    // Render widgets immediately if proposals found
-    if (allProposals.snapshot.length > 0 || allProposals.aip.length > 0) {
+    // TEMPORARY: Force widget rendering for testing - bypass proposal requirements
+    // Original condition: if (allProposals.snapshot.length > 0 || allProposals.aip.length > 0)
+    // For testing, always render widgets regardless of proposals found
+    const forceRenderForTesting = true;
+    
+    // Render widgets immediately if proposals found OR if force testing is enabled
+    if (forceRenderForTesting || allProposals.snapshot.length > 0 || allProposals.aip.length > 0) {
+      // If forcing for testing and no proposals found, create dummy proposals
+      let proposalsToUse = allProposals;
+      if (forceRenderForTesting && allProposals.snapshot.length === 0 && allProposals.aip.length === 0) {
+        console.log("🧪 [TESTING] No proposals found - creating dummy proposals for testing");
+        proposalsToUse = {
+          snapshot: ['https://snapshot.org/#/aave.eth/proposal/0x1234567890abcdef'],
+          aip: ['https://app.aave.com/governance/v3/proposal/?proposalId=123'],
+          forum: []
+        };
+      }
+      
       // CRITICAL: Check if widgets already exist before rendering - prevent duplicate rendering
       const existingWidgetsBeforeRender = document.querySelectorAll('.tally-status-widget-container');
       if (existingWidgetsBeforeRender.length > 0 && widgetSetupCompleted) {
@@ -6961,7 +6977,7 @@ export default apiInitializer((api) => {
       // Mark as completed BEFORE rendering to prevent observer-triggered re-executions
       widgetSetupCompleted = true;
       try {
-        setupTopicWidgetWithProposals(allProposals);
+        setupTopicWidgetWithProposals(proposalsToUse);
       } catch (error) {
         console.error("❌ [TOPIC] Error in setupTopicWidgetWithProposals:", error);
         // Reset flags on error to allow retry
