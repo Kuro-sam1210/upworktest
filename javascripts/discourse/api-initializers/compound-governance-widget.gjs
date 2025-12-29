@@ -1,6 +1,10 @@
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer((api) => {
+  // TEMPORARY TESTING: Added back aggressive scroll restoration and DOM manipulation
+  // from original problematic version to test if this causes shaking/glitching effect
+  // These changes should cause the page to shake/flicker during widget loading
+
   // CRITICAL: Force scroll to top (0, 0) on page load
   // User wants to stay at top, no auto-scroll to proposals
   // This prevents Discourse from auto-scrolling to posts/proposals
@@ -26,6 +30,31 @@ export default apiInitializer((api) => {
       document.documentElement.scrollTop = 0;
       document.body.scrollLeft = 0;
       document.body.scrollTop = 0;
+
+      // TEMPORARY: Add aggressive repeated scroll restoration to test shaking effect
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollLeft = 0;
+        document.documentElement.scrollTop = 0;
+        document.body.scrollLeft = 0;
+        document.body.scrollTop = 0;
+      }, 0);
+
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollLeft = 0;
+        document.documentElement.scrollTop = 0;
+        document.body.scrollLeft = 0;
+        document.body.scrollTop = 0;
+      }, 10);
+
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollLeft = 0;
+        document.documentElement.scrollTop = 0;
+        document.body.scrollLeft = 0;
+        document.body.scrollTop = 0;
+      }, 50);
     }
   };
   
@@ -61,9 +90,13 @@ export default apiInitializer((api) => {
   // Also restore on any DOM mutations that might trigger scrolling
   const scrollRestoreOnMutation = () => {
     if (scrollLocked || widgetsInserting) {
-      // Use requestAnimationFrame to ensure scroll is restored
+      // TEMPORARY: Add back the aggressive scroll restoration from original file to test shaking
+      // Use multiple methods to ensure scroll is restored
       requestAnimationFrame(() => {
         restoreScroll();
+        setTimeout(() => restoreScroll(), 0);
+        setTimeout(() => restoreScroll(), 10);
+        setTimeout(() => restoreScroll(), 50);
       });
     }
   };
@@ -11667,10 +11700,10 @@ export default apiInitializer((api) => {
     
     // Periodic check to ensure AIP widgets stay visible (prevents them from being hidden by other code)
     // CRITICAL: AIP widgets are topic-level and should ALWAYS be visible once found
-    // Run more frequently to catch any hiding attempts immediately
+    // TEMPORARY: Make this extremely aggressive to test shaking effect (original had frequent DOM manipulation)
     const aipVisibilityInterval = setInterval(() => {
       ensureAIPWidgetsVisible();
-    }, 300); // Check every 300ms to keep AIP widgets visible (very aggressive)
+    }, 50); // Check every 50ms (extremely aggressive - will cause DOM manipulation every 50ms)
     
     // Store interval ID so it can be cleared if needed (though it should run for the page lifetime)
     window._aipVisibilityInterval = aipVisibilityInterval;
