@@ -5,139 +5,18 @@ export default apiInitializer((api) => {
   // from original problematic version to test if this causes shaking/glitching effect
   // These changes should cause the page to shake/flicker during widget loading
 
-  // CRITICAL: Force scroll to top (0, 0) on page load
-  // User wants to stay at top, no auto-scroll to proposals
-  // This prevents Discourse from auto-scrolling to posts/proposals
-  let initialScrollX = 0;
-  let initialScrollY = 0;
+  // FIXED: Removed aggressive scroll locking that breaks Discourse navigation
+  // The widget should NOT interfere with normal page scrolling
+  // Users need to be able to scroll through posts and content normally
   
-  // Immediately force scroll to top
-  window.scrollTo(0, 0);
-  document.documentElement.scrollLeft = 0;
-  document.documentElement.scrollTop = 0;
-  document.body.scrollLeft = 0;
-  document.body.scrollTop = 0;
+  // FIXED: Removed all scroll locking variables and functions
+  // The widget must not interfere with Discourse's normal scrolling behavior
   
-  // Lock scroll position during initial widget setup to prevent auto-scrolling
-  let scrollLocked = true;
-  let widgetsInserting = false; // Track when widgets are being inserted
+  // FIXED: Removed scrollRestoreOnMutation function
+  // No longer needed since we removed scroll locking
   
-  const restoreScroll = () => {
-    if (scrollLocked || widgetsInserting) {
-      // Always restore to top (0, 0) - user wants to stay at top
-      window.scrollTo(0, 0);
-      document.documentElement.scrollLeft = 0;
-      document.documentElement.scrollTop = 0;
-      document.body.scrollLeft = 0;
-      document.body.scrollTop = 0;
-
-      // TEMPORARY: Add aggressive repeated scroll restoration to test shaking effect
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollLeft = 0;
-        document.documentElement.scrollTop = 0;
-        document.body.scrollLeft = 0;
-        document.body.scrollTop = 0;
-      }, 0);
-
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollLeft = 0;
-        document.documentElement.scrollTop = 0;
-        document.body.scrollLeft = 0;
-        document.body.scrollTop = 0;
-      }, 10);
-
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollLeft = 0;
-        document.documentElement.scrollTop = 0;
-        document.body.scrollLeft = 0;
-        document.body.scrollTop = 0;
-      }, 50);
-    }
-  };
-  
-  const lockScrollUntilWidgetsReady = () => {
-    // Stop locking after widgets are ready (reduced to 500ms to allow immediate scrolling)
-    // Note: We rely on MutationObserver and scroll event listener instead of fixed intervals
-    setTimeout(() => {
-      scrollLocked = false;
-      // Final restore to top
-      restoreScroll();
-    }, 500);
-  };
-  
-  // Start scroll locking immediately
-  lockScrollUntilWidgetsReady();
-  
-  // CRITICAL: Aggressively restore scroll position on any scroll event during lock/insertion
-  // This prevents Discourse or browser from auto-scrolling to widgets or posts
-  const aggressiveScrollRestore = (e) => {
-    if (scrollLocked || widgetsInserting) {
-      // Prevent default scroll behavior and force to top
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      restoreScroll();
-    }
-  };
-  
-  // Listen for scroll events and restore position if locked (non-passive to allow preventDefault)
-  window.addEventListener('scroll', aggressiveScrollRestore, { passive: false, capture: true });
-  
-  // Also restore on any DOM mutations that might trigger scrolling
-  const scrollRestoreOnMutation = () => {
-    if (scrollLocked || widgetsInserting) {
-      // TEMPORARY: Add back the aggressive scroll restoration from original file to test shaking
-      // Use multiple methods to ensure scroll is restored
-      requestAnimationFrame(() => {
-        restoreScroll();
-        setTimeout(() => restoreScroll(), 0);
-        setTimeout(() => restoreScroll(), 10);
-        setTimeout(() => restoreScroll(), 50);
-      });
-    }
-  };
-  
-  // CRITICAL: Also prevent scrolling when widgets are added to DOM via MutationObserver
-  // This catches any scroll events triggered by DOM changes
-  const scrollPreventionObserver = new MutationObserver((mutations) => {
-    // Check if widgets are being added
-    const hasWidgetAddition = mutations.some(mutation => {
-      return Array.from(mutation.addedNodes).some(node => {
-        if (node.nodeType === 1) { // Element node
-          return node.classList?.contains('tally-status-widget-container') ||
-                 node.classList?.contains('governance-widgets-wrapper') ||
-                 node.querySelector?.('.tally-status-widget-container') ||
-                 node.querySelector?.('.governance-widgets-wrapper');
-        }
-        return false;
-      });
-    });
-    
-    if (hasWidgetAddition) {
-      widgetsInserting = true;
-      scrollRestoreOnMutation();
-      // Keep preventing scroll for 500ms after widget insertion
-      setTimeout(() => {
-        widgetsInserting = false;
-      }, 500);
-    }
-    
-    if (scrollLocked || widgetsInserting) {
-      scrollRestoreOnMutation();
-    }
-  });
-  
-  // Observe document body for widget additions
-  if (document.body) {
-    scrollPreventionObserver.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
+  // FIXED: Removed scroll prevention MutationObserver
+  // This was interfering with Discourse's normal DOM operations and lazy loading
   
   // Track errors that are being handled to avoid false positives in unhandled rejection handler
   const handledErrors = new WeakSet();
@@ -352,15 +231,7 @@ export default apiInitializer((api) => {
     return `page_${path}`; // Fallback to full path
   }
   
-  function hasWidgetBeenShown() {
-    try {
-      const topicKey = getTopicKey();
-      const shownKey = STORAGE_PREFIX + 'shown_' + topicKey;
-      return localStorage.getItem(shownKey) === 'true';
-    } catch {
-      return false;
-    }
-  }
+  // FIXED: Removed unused hasWidgetBeenShown function
   
   function markWidgetAsShown() {
     try {
@@ -3369,7 +3240,7 @@ export default apiInitializer((api) => {
               Voting Starting Soon
             </div>
           ` : ''}
-        <a href="${stageUrl}" target="_blank" rel="noopener" class="vote-button" style="display: block; width: 100%; min-width: 100%; max-width: 100%; padding: 8px 12px; margin-top: 10px; margin-left: 0; margin-right: 0; box-sizing: border-box; border: none; border-radius: 4px; background-color: #e5e7eb !important; font-size: 0.85em; font-weight: 600; text-align: center; text-decoration: none; color: #6b7280 !important;">
+        <a href="${stageUrl}" target="_blank" rel="noopener" class="vote-button" style="display: block; width: 100%; min-width: 100%; max-width: 100%; padding: 8px 12px; margin-top: 10px; margin-left: 0; margin-right: 0; box-sizing: border-box; border: none; border-radius: 4px; background-color: #e5e7eb; font-size: 0.85em; font-weight: 600; text-align: center; text-decoration: none; color: #6b7280;">
             View on Snapshot
           </a>
         </div>
@@ -3647,7 +3518,7 @@ export default apiInitializer((api) => {
             </div>
           `}
           ${quorumHtml}
-          <a href="${stageUrl}" target="_blank" rel="noopener" class="vote-button" style="display: block; width: 100%; min-width: 100%; max-width: 100%; padding: 8px 12px; margin-top: 10px; margin-left: 0; margin-right: 0; box-sizing: border-box; border: none; border-radius: 4px; background-color: #e5e7eb !important; font-size: 0.85em; font-weight: 600; text-align: center; text-decoration: none; color: #6b7280 !important;">
+          <a href="${stageUrl}" target="_blank" rel="noopener" class="vote-button" style="display: block; width: 100%; min-width: 100%; max-width: 100%; padding: 8px 12px; margin-top: 10px; margin-left: 0; margin-right: 0; box-sizing: border-box; border: none; border-radius: 4px; background-color: #e5e7eb; font-size: 0.85em; font-weight: 600; text-align: center; text-decoration: none; color: #6b7280;">
             View on Aave
           </a>
         </div>
@@ -4854,7 +4725,7 @@ export default apiInitializer((api) => {
             Quorum: ${formatVoteAmount(totalVotes)} / ${formatVoteAmount(proposalData.quorum)}
           </div>
         ` : ''}
-        <a href="${originalUrl}" target="_blank" rel="noopener" class="vote-button" style="${hasPassed && !isEndingSoon ? 'background-color: #e5e7eb !important; color: #6b7280 !important;' : 'background-color: var(--d-button-primary-bg-color, #2563eb) !important; color: var(--d-button-primary-text-color, white) !important;'}">
+        <a href="${originalUrl}" target="_blank" rel="noopener" class="vote-button" style="${hasPassed && !isEndingSoon ? 'background-color: #e5e7eb; color: #6b7280;' : 'background-color: var(--d-button-primary-bg-color, #2563eb); color: var(--d-button-primary-text-color, white);'}">
           ${buttonText}
         </a>
       </div>
@@ -6046,7 +5917,7 @@ export default apiInitializer((api) => {
     proposals.aip = proposals.aip
       .map(url => {
         const match = url.match(/proposalId=(\d+)/);
-        const id = match ? parseInt(match[1]) : 0;
+        const id = match ? parseInt(match[1], 10) : 0;
         return { url, id };
       })
       .sort((a, b) => b.id - a.id)
@@ -6057,7 +5928,7 @@ export default apiInitializer((api) => {
     proposals.snapshot = proposals.snapshot
       .map(url => {
         const match = url.match(/\/([^\/]+)\/(\d+)$/);
-        const id = match ? parseInt(match[2]) : 0;
+        const id = match ? parseInt(match[2], 10) : 0;
         return { url, id };
       })
       .sort((a, b) => b.id - a.id)
@@ -6123,71 +5994,11 @@ export default apiInitializer((api) => {
   }
 
   // Helper function to preserve scroll position during DOM operations
-  // Prevents auto-scrolling when widgets are inserted into the page
+  // Simplified scroll position preservation (scroll locking removed)
+  // Simplified scroll position preservation (scroll locking removed)
   function preserveScrollPosition(callback) {
-    // Save current scroll position BEFORE any DOM operations
-    // Use initial scroll position if we're still in the scroll lock period
-    const scrollX = scrollLocked ? initialScrollX : (window.pageXOffset || window.scrollX || document.documentElement.scrollLeft || 0);
-    const scrollY = scrollLocked ? initialScrollY : (window.pageYOffset || window.scrollY || document.documentElement.scrollTop || 0);
-    
-    // Mark that widgets are being inserted
-    widgetsInserting = true;
-    
-    // Execute the callback (widget insertion)
+    // Execute the callback without scroll preservation since scroll locking was removed
     callback();
-    
-    // Immediately restore scroll position synchronously
-    window.scrollTo(scrollX, scrollY);
-    document.documentElement.scrollLeft = scrollX;
-    document.documentElement.scrollTop = scrollY;
-    document.body.scrollLeft = scrollX;
-    document.body.scrollTop = scrollY;
-    
-    // Keep preventing scroll for a bit after insertion
-    setTimeout(() => {
-      widgetsInserting = false;
-    }, 500);
-    
-    // Restore multiple times using different methods to ensure it sticks
-    // Use setTimeout(0) for immediate execution after current call stack
-    setTimeout(() => {
-      window.scrollTo(scrollX, scrollY);
-      document.documentElement.scrollLeft = scrollX;
-      document.documentElement.scrollTop = scrollY;
-      document.body.scrollLeft = scrollX;
-      document.body.scrollTop = scrollY;
-    }, 0);
-    
-    // Use requestAnimationFrame to ensure it happens after any browser auto-scroll
-    requestAnimationFrame(() => {
-      window.scrollTo(scrollX, scrollY);
-      document.documentElement.scrollLeft = scrollX;
-      document.documentElement.scrollTop = scrollY;
-      document.body.scrollLeft = scrollX;
-      document.body.scrollTop = scrollY;
-      // Also restore in next frame as backup
-      requestAnimationFrame(() => {
-        window.scrollTo(scrollX, scrollY);
-        document.documentElement.scrollLeft = scrollX;
-        document.documentElement.scrollTop = scrollY;
-        document.body.scrollLeft = scrollX;
-        document.body.scrollTop = scrollY;
-        // Final restore after a short delay
-        setTimeout(() => {
-          window.scrollTo(scrollX, scrollY);
-          document.documentElement.scrollLeft = scrollX;
-          document.documentElement.scrollTop = scrollY;
-          document.body.scrollLeft = scrollX;
-          document.body.scrollTop = scrollY;
-        }, 10);
-        // Extra restore after longer delay
-        setTimeout(() => {
-          window.scrollTo(scrollX, scrollY);
-          document.documentElement.scrollLeft = scrollX;
-          document.documentElement.scrollTop = scrollY;
-        }, 50);
-      });
-    });
   }
   
   // CRITICAL: Ensure all widgets are visible immediately after creation
@@ -6983,7 +6794,7 @@ export default apiInitializer((api) => {
     // TEMPORARY: Force widget rendering for testing - bypass proposal requirements
     // Original condition: if (allProposals.snapshot.length > 0 || allProposals.aip.length > 0)
     // For testing, always render widgets regardless of proposals found
-    const forceRenderForTesting = true;
+    const forceRenderForTesting = false;
     
     // Render widgets immediately if proposals found OR if force testing is enabled
     if (forceRenderForTesting || allProposals.snapshot.length > 0 || allProposals.aip.length > 0) {
@@ -8847,7 +8658,7 @@ export default apiInitializer((api) => {
             // Also filter out proposals without any discourse URL
             
             // TEMPORARY: Disable validation for testing - always show widgets
-            const forceShowForTesting = true;
+            const forceShowForTesting = false;
             
             if (!forceShowForTesting && !validation.isRelated) {
               if (validation.discussionLink) {
@@ -9055,7 +8866,7 @@ export default apiInitializer((api) => {
               // Also filter out proposals without any discourse URL
               
               // TEMPORARY: Disable validation for testing - always show widgets
-              const forceShowForTesting = true;
+              const forceShowForTesting = false;
               
               if (!forceShowForTesting && !validation.isRelated) {
                 if (validation.discussionLink) {
@@ -9595,88 +9406,8 @@ export default apiInitializer((api) => {
       }
     });
     
-    // CRITICAL: Also watch for oneboxes and preview containers being added
-    // When oneboxes/preview containers are added, extract URLs from them
-    const previewObserver = new MutationObserver((mutations) => {
-      // CRITICAL: Skip if widget setup is already completed or running to prevent blinking
-      if (widgetSetupCompleted || isWidgetSetupRunning) {
-        const existingWidgets = document.querySelectorAll('.tally-status-widget-container');
-        if (existingWidgets.length > 0) {
-          // Widgets already exist - skip observer-triggered setup to prevent re-renders
-          return;
-        }
-      }
-      
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1) { // Element node
-            // Check if this is a onebox (before it's replaced)
-            const onebox = node.classList?.contains('onebox') || node.classList?.contains('onebox-body')
-              ? node
-              : node.querySelector?.('.onebox, .onebox-body');
-            
-            if (onebox) {
-              const oneboxText = onebox.textContent || onebox.innerHTML || '';
-              const oneboxLinks = onebox.querySelectorAll('a[href*="snapshot.org"], a[href*="snapshot.box"], a[href*="testnet.snapshot.box"]');
-              
-              // Check text content
-              SNAPSHOT_URL_REGEX.lastIndex = 0;
-              const textMatches = Array.from(oneboxText.matchAll(SNAPSHOT_URL_REGEX));
-              if (textMatches.length > 0 || oneboxLinks.length > 0) {
-                // CRITICAL: Double-check before triggering setup
-                if (!widgetSetupCompleted && !isWidgetSetupRunning) {
-                  console.log(`✅ [TOPIC] Onebox added with ${textMatches.length} Snapshot URL(s) in text, ${oneboxLinks.length} in links`);
-                  // Re-scan to add these URLs to proposals
-                  setTimeout(() => {
-                    debouncedSetupTopicWidget();
-                  }, 200);
-                }
-              }
-            }
-            
-            // Check if this is a preview container or contains one
-            const preview = node.classList?.contains('tally-url-preview') || node.classList?.contains('tally-preview-content')
-              ? node
-              : node.querySelector?.('.tally-url-preview, [data-tally-preview-id]');
-            
-            if (preview) {
-              // Check for URL in data attribute first (fastest method)
-              const storedUrl = preview.getAttribute('data-tally-url');
-              if (storedUrl && (storedUrl.includes('snapshot.org') || storedUrl.includes('snapshot.box'))) {
-                // CRITICAL: Double-check before triggering setup
-                if (!widgetSetupCompleted && !isWidgetSetupRunning) {
-                  console.log(`✅ [TOPIC] Preview container added with Snapshot URL in data attribute: ${storedUrl}`);
-                  // Re-scan immediately for faster detection
-                  debouncedSetupTopicWidget();
-                }
-              } else {
-                // Wait a short time for links to be added to preview container (reduced from 500ms to 100ms)
-                setTimeout(() => {
-                  // CRITICAL: Check again before triggering setup
-                  if (!widgetSetupCompleted && !isWidgetSetupRunning) {
-                    const previewLinks = preview.querySelectorAll('a[href*="snapshot.org"], a[href*="snapshot.box"], a[href*="testnet.snapshot.box"]');
-                    if (previewLinks.length > 0) {
-                      console.log(`✅ [TOPIC] Preview container added with ${previewLinks.length} Snapshot URL(s)`);
-                      // Re-scan to add these URLs to proposals
-                      debouncedSetupTopicWidget();
-                    }
-                  }
-                }, 100);
-              }
-            }
-          }
-        });
-      });
-    });
-    
-    // Watch for oneboxes and preview containers being added to the topic
-    topicContentSelectors.forEach(selector => {
-      const element = document.querySelector(selector);
-      if (element) {
-        previewObserver.observe(element, { childList: true, subtree: true });
-        console.log(`✅ [TOPIC] Watching ${selector} for oneboxes and preview containers`);
-      }
-    });
+    // FIXED: Removed previewObserver MutationObserver
+    // This was interfering with Discourse's onebox rendering and not essential for core functionality
     
     // Detect mobile for faster initial load
     // Use screen width only - don't rely on user agent as tablets/desktops may have mobile-like user agents
@@ -9700,131 +9431,16 @@ export default apiInitializer((api) => {
     // Then also set up debounced version for subsequent changes
     debouncedSetupTopicWidget();
     
-    // CRITICAL: Also scan when user scrolls - this catches lazy-loaded posts
-    // Use a throttled scroll handler to avoid too many scans
-    // IMPORTANT: This ONLY adds new proposals found on scroll, it NEVER hides existing widgets
-    // Widgets are detected on page load and remain visible regardless of scroll position
-    let lastVisibilityCheck = 0;
-    const VISIBILITY_CHECK_THROTTLE = 100; // Reduced to 100ms for more aggressive checking during scroll
-    const handleScroll = () => {
-      const now = Date.now();
-      const shouldCheckVisibility = (now - lastVisibilityCheck) > VISIBILITY_CHECK_THROTTLE;
-      
-      // CRITICAL: Always force visibility immediately on scroll if widgets exist
-      // Discourse's viewport tracker may hide widgets, so we must be aggressive
-      const allWidgets = document.querySelectorAll('.tally-status-widget-container');
-      if (allWidgets.length > 0) {
-        // Use requestAnimationFrame to ensure we run after Discourse's scroll handlers
-        requestAnimationFrame(() => {
-          // Force visibility immediately without checking cache first
-          // This prevents any delay that could cause visible blinking
-          allWidgets.forEach(widget => {
-            widget.style.setProperty('display', 'block', 'important');
-            widget.style.setProperty('visibility', 'visible', 'important');
-            widget.style.setProperty('opacity', '1', 'important');
-            widget.classList.remove('hidden', 'd-none', 'is-hidden');
-            // Update cache to reflect forced visibility
-            markWidgetAsVisibleInCache(widget);
-          });
-          
-          // Also force container visibility
-          const container = document.querySelector('.governance-widgets-wrapper');
-          if (container) {
-            container.style.setProperty('display', 'flex', 'important');
-            container.style.setProperty('visibility', 'visible', 'important');
-            container.style.setProperty('opacity', '1', 'important');
-          }
-        });
-      }
-      
-      // Only do expensive checks if throttled time has passed
-      if (shouldCheckVisibility) {
-        lastVisibilityCheck = now;
-        // Run full visibility check as backup
-        if (allWidgets.length > 0) {
-          ensureAllWidgetsVisible();
-        }
-      }
-      
-      // CRITICAL: If widget has been shown for this topic, skip expensive scanning
-      // This prevents widgets from appearing/disappearing on scroll after first visit
-      if (hasWidgetBeenShown()) {
-        // Skip expensive scanning if widget was already shown (data is cached)
-        // Only scan for new proposals if we haven't found all yet
-        const existingWidgets = document.querySelectorAll('.tally-status-widget-container');
-        if (existingWidgets.length > 0) {
-          // Widgets already exist and have been shown - skip scanning
-          return; // Early return to skip scanning
-        }
-      }
-      
-      // CRITICAL: Ensure the container wrapper stays visible on ALL screen sizes during scroll
-      // Only update if actually hidden (prevents blinking)
-      const container = document.querySelector('.governance-widgets-wrapper');
-      if (container) {
-        const containerStyle = window.getComputedStyle(container);
-        const containerIsHidden = containerStyle.display === 'none' || containerStyle.visibility === 'hidden' || containerStyle.opacity === '0';
-        
-        if (containerIsHidden) {
-          const shouldInline = shouldShowWidgetInline();
-          
-          container.style.setProperty('display', 'flex', 'important');
-          container.style.setProperty('visibility', 'visible', 'important');
-          container.style.setProperty('opacity', '1', 'important');
-          
-          if (shouldInline) {
-            // Mobile/Tablet: Use relative positioning (inline in topic) - respect CSS
-            container.style.setProperty('position', 'relative', 'important');
-            container.style.setProperty('left', 'auto', 'important');
-            container.style.setProperty('right', 'auto', 'important');
-            container.style.setProperty('top', 'auto', 'important');
-            container.style.setProperty('width', '100%', 'important');
-            container.style.setProperty('max-width', '100%', 'important');
-          } else {
-            // Desktop: Use fixed positioning (right side)
-            container.style.setProperty('position', 'fixed', 'important');
-            container.style.setProperty('z-index', '500', 'important');
-            container.style.setProperty('right', '5px', 'important');
-            container.style.setProperty('top', '180px', 'important');
-            container.style.setProperty('left', 'auto', 'important');
-            // CRITICAL: Keep width fixed at 320px to prevent width changes on scroll
-            container.style.setProperty('width', '320px', 'important');
-            container.style.setProperty('max-width', '320px', 'important');
-            // Optimize for fixed positioning
-            container.style.setProperty('will-change', 'transform', 'important');
-            container.style.setProperty('backface-visibility', 'hidden', 'important');
-            container.style.setProperty('transform', 'translateZ(0)', 'important');
-          }
-        }
-      }
-      
-      // DISABLED: No scroll-based widget initialization
-      // Widgets are only initialized on page load, not on scroll
-      // This prevents loaders from appearing when scrolling and prevents auto-scrolling to widgets
-      return; // Early return - skip all scroll-based widget scanning
-    };
+    // FIXED: Removed unused handleScroll function that was aggressively forcing visibility on scroll
+    // This was interfering with Discourse's normal behavior and is no longer needed
     
     // Enhanced scroll handler - wraps handleScroll with additional visibility checks
-    const enhancedHandleScroll = () => {
-      // Call original scroll handler
-      handleScroll();
-      
-      // Force immediate visibility check on scroll for extra safety
-      requestAnimationFrame(() => {
-        const allWidgets = document.querySelectorAll('.tally-status-widget-container');
-        allWidgets.forEach(widget => {
-          widget.style.setProperty('display', 'block', 'important');
-          widget.style.setProperty('visibility', 'visible', 'important');
-          widget.style.setProperty('opacity', '1', 'important');
-        });
-      });
-    };
+    // FIXED: Removed enhancedHandleScroll function that was forcing visibility on every scroll
+    // This was interfering with Discourse's normal scrolling behavior
     
-    // Only add scroll listener for detecting new lazy-loaded proposals
-    // This does NOT hide/show widgets based on scroll position
-    // Visibility is enforced immediately on every scroll to prevent disappearing
-    // Use enhanced scroll handler with continuous visibility checking
-    window.addEventListener('scroll', enhancedHandleScroll, { passive: true });
+    // FIXED: Removed aggressive scroll listener that was forcing widget visibility on every scroll
+    // This was interfering with normal Discourse scrolling behavior and causing UI clashes
+    // Widget visibility is now handled through MutationObserver and initial setup only
     
     // CRITICAL: Also handle resize events to ensure widget stays visible when switching screen sizes
     // This prevents widget from disappearing when going from desktop to mobile or vice versa
@@ -9844,29 +9460,8 @@ export default apiInitializer((api) => {
     };
     window.addEventListener('resize', handleResize);
     
-    // Listen for sidebar toggle events to update widget position
-    // Watch for sidebar toggle buttons and sidebar state changes
-    const sidebarToggleObserver = new MutationObserver(() => {
-      const container = document.getElementById('governance-widgets-wrapper');
-      if (container) {
-        const shouldInline = shouldShowWidgetInline();
-        const currentInline = container.style.position === 'relative' || 
-                              window.getComputedStyle(container).position === 'relative';
-        
-        // Only update if position needs to change
-        if (shouldInline !== currentInline) {
-          console.log(`🔵 [SIDEBAR] Sidebar state changed, updating widget position (shouldInline: ${shouldInline})`);
-          handleResize();
-        }
-      }
-    });
-    
-    // Observe sidebar elements and body for class changes
-    const sidebar = document.querySelector('.sidebar-wrapper, .d-sidebar, .sidebar, nav.sidebar, .navigation-container');
-    if (sidebar) {
-      sidebarToggleObserver.observe(sidebar, { attributes: true, attributeFilter: ['class', 'style'] });
-    }
-    sidebarToggleObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    // FIXED: Removed sidebarToggleObserver MutationObserver
+    // This was watching for sidebar changes but is not essential for core functionality
     
     // Also listen for click events on sidebar toggle buttons
     document.addEventListener('click', (e) => {
@@ -9908,310 +9503,12 @@ export default apiInitializer((api) => {
       }
     }, 3000); // Check every 3 seconds, but only if cache indicates widgets might be hidden
     
-    // CRITICAL: Use MutationObserver to watch for any changes to widget visibility
-    // This immediately restores visibility if Discourse or other code tries to hide widgets
-    // Works on ALL screen sizes (desktop, tablet, mobile)
-    // Made more aggressive to catch all visibility changes including from Discourse viewport tracker
-    const widgetVisibilityObserver = new MutationObserver((mutations) => {
-      // Process mutations immediately without delay
-      mutations.forEach((mutation) => {
-        const target = mutation.target;
-        const shouldInline = shouldShowWidgetInline();
-        
-        // Check if target is a widget or container (check both attributes and childList)
-        let widget = null;
-        let container = null;
-        
-        if (target.classList?.contains('tally-status-widget-container')) {
-          widget = target;
-        } else if (target.closest?.('.tally-status-widget-container')) {
-          widget = target.closest('.tally-status-widget-container');
-        }
-        
-        if (target.classList?.contains('governance-widgets-wrapper') || target.id === 'governance-widgets-wrapper') {
-          container = target;
-        }
-        
-        // CRITICAL: Prevent Discourse from adding cloaking attributes to our widgets
-        if (mutation.type === 'attributes' && widget) {
-          // If Discourse tries to add data-cloak="true" or remove our anti-cloak attributes, stop it
-          if (mutation.attributeName === 'data-cloak') {
-            const cloakValue = widget.getAttribute('data-cloak');
-            if (cloakValue === 'true') {
-              // Discourse tried to enable cloaking - disable it immediately
-              widget.setAttribute('data-cloak', 'false');
-              widget.setAttribute('data-skip-cloak', 'true');
-              widget.setAttribute('data-no-cloak', 'true');
-              console.log(`🔵 [OBSERVER] Prevented Discourse cloaking on widget`);
-            }
-          }
-        }
-        
-        // Also check for widgets in childList changes (Discourse might be moving/hiding them)
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType === 1) { // Element node
-              if (node.classList?.contains('tally-status-widget-container')) {
-                widget = node;
-                // Prevent cloaking on newly added widgets
-                node.setAttribute('data-cloak', 'false');
-                node.setAttribute('data-skip-cloak', 'true');
-                node.setAttribute('data-no-cloak', 'true');
-              } else {
-                const foundWidget = node.querySelector?.('.tally-status-widget-container');
-                if (foundWidget) {
-                  widget = foundWidget;
-                  foundWidget.setAttribute('data-cloak', 'false');
-                  foundWidget.setAttribute('data-skip-cloak', 'true');
-                  foundWidget.setAttribute('data-no-cloak', 'true');
-                }
-              }
-            }
-          });
-        }
-        
-        // Force widget visibility immediately if found
-        if (widget) {
-          const computedStyle = window.getComputedStyle(widget);
-          if (computedStyle.display === 'none' || 
-              computedStyle.visibility === 'hidden' || 
-              computedStyle.opacity === '0') {
-            console.log(`🔵 [OBSERVER] Widget visibility changed to hidden, forcing visible immediately`);
-            widget.style.setProperty('display', 'block', 'important');
-            widget.style.setProperty('visibility', 'visible', 'important');
-            widget.style.setProperty('opacity', '1', 'important');
-            widget.classList.remove('hidden', 'd-none', 'is-hidden', 'cloaked');
-            // CRITICAL: Ensure cloaking is disabled
-            widget.setAttribute('data-cloak', 'false');
-            widget.setAttribute('data-skip-cloak', 'true');
-            widget.setAttribute('data-no-cloak', 'true');
-            // CRITICAL: Update cache immediately to prevent further checks
-            markWidgetAsVisibleInCache(widget);
-          } else {
-            // Even if visible, ensure it stays visible by updating cache
-            markWidgetAsVisibleInCache(widget);
-          }
-        }
-        
-        // Also check for attribute changes on widgets
-        if ((mutation.type === 'attributes' && 
-            (mutation.attributeName === 'style' || mutation.attributeName === 'class' || mutation.attributeName === 'data-cloak')) && widget) {
-          const computedStyle = window.getComputedStyle(widget);
-          if (computedStyle.display === 'none' || 
-              computedStyle.visibility === 'hidden' || 
-              computedStyle.opacity === '0') {
-            console.log(`🔵 [OBSERVER] Widget visibility changed to hidden, forcing visible immediately`);
-            widget.style.setProperty('display', 'block', 'important');
-            widget.style.setProperty('visibility', 'visible', 'important');
-            widget.style.setProperty('opacity', '1', 'important');
-            widget.classList.remove('hidden', 'd-none', 'is-hidden', 'cloaked');
-            widget.setAttribute('data-cloak', 'false');
-            widget.setAttribute('data-skip-cloak', 'true');
-            widget.setAttribute('data-no-cloak', 'true');
-            markWidgetAsVisibleInCache(widget);
-          }
-        }
-        
-        // Also watch for container visibility changes and width changes
-        if (container || (target.classList?.contains('governance-widgets-wrapper') || target.id === 'governance-widgets-wrapper')) {
-          const containerEl = container || target;
-          const computedStyle = window.getComputedStyle(containerEl);
-          if (computedStyle.display === 'none' || 
-              computedStyle.visibility === 'hidden' || 
-              computedStyle.opacity === '0') {
-            console.log(`🔵 [OBSERVER] Container visibility changed to hidden, forcing visible immediately`);
-            containerEl.style.setProperty('display', 'flex', 'important');
-            containerEl.style.setProperty('visibility', 'visible', 'important');
-            containerEl.style.setProperty('opacity', '1', 'important');
-            
-            // Re-apply correct positioning based on screen size and sidebar state
-            // Reuse shouldInline from outer scope (already declared at line 9031)
-            if (shouldInline) {
-              containerEl.style.setProperty('position', 'relative', 'important');
-              containerEl.style.setProperty('width', '100%', 'important');
-              containerEl.style.setProperty('max-width', '100%', 'important');
-            } else {
-              containerEl.style.setProperty('position', 'fixed', 'important');
-              containerEl.style.setProperty('z-index', '500', 'important');
-              // CRITICAL: Keep width fixed at 320px on desktop to prevent width changes on scroll
-              containerEl.style.setProperty('width', '320px', 'important');
-              containerEl.style.setProperty('max-width', '320px', 'important');
-            }
-          }
-          
-          // CRITICAL: Prevent width changes on desktop (keep fixed at 320px)
-          if (!shouldInline) {
-            const currentWidth = computedStyle.width;
-            // If width is not 320px, restore it (prevents width flickering on scroll)
-            if (currentWidth && currentWidth !== '320px' && !currentWidth.includes('320')) {
-              containerEl.style.setProperty('width', '320px', 'important');
-              containerEl.style.setProperty('max-width', '320px', 'important');
-            }
-          }
-        }
-      });
-    });
-    
-    // Observe all existing widgets, container, and any new ones that get added
-    const observeWidgets = () => {
-      // Observe all widgets with both attributes and childList to catch all changes
-      const allWidgets = document.querySelectorAll('.tally-status-widget-container');
-      allWidgets.forEach(widget => {
-        widgetVisibilityObserver.observe(widget, {
-          attributes: true,
-          attributeFilter: ['style', 'class', 'data-cloak', 'data-cloaked'], // Watch for cloaking attributes
-          childList: true,
-          subtree: false
-        });
-        
-        // CRITICAL: Ensure cloaking is disabled and exclude from viewport tracking
-        widget.setAttribute('data-cloak', 'false');
-        widget.setAttribute('data-skip-cloak', 'true');
-        widget.setAttribute('data-no-cloak', 'true');
-        widget.setAttribute('data-viewport', 'false');
-        widget.setAttribute('data-exclude-viewport', 'true');
-        widget.setAttribute('data-no-viewport-track', 'true');
-        widget.classList.add('no-viewport-track');
-      });
-      
-      // Also observe the container wrapper with childList to catch widget additions/removals
-      const container = document.querySelector('.governance-widgets-wrapper');
-      if (container) {
-        widgetVisibilityObserver.observe(container, {
-          attributes: true,
-          attributeFilter: ['style', 'class', 'data-cloak', 'data-cloaked'], // Watch for cloaking attributes
-          childList: true,
-          subtree: true // Watch for widgets being added/removed inside
-        });
-        
-        // CRITICAL: Ensure cloaking is disabled and exclude from viewport tracking
-        container.setAttribute('data-cloak', 'false');
-        container.setAttribute('data-skip-cloak', 'true');
-        container.setAttribute('data-no-cloak', 'true');
-        container.setAttribute('data-viewport', 'false');
-        container.setAttribute('data-exclude-viewport', 'true');
-        container.setAttribute('data-no-viewport-track', 'true');
-        container.classList.add('no-viewport-track');
-      }
-      
-      // Also observe the topic body to catch widgets being moved around
-      const topicBody = document.querySelector('.topic-body, .posts-wrapper, .post-stream');
-      if (topicBody) {
-        widgetVisibilityObserver.observe(topicBody, {
-          childList: true,
-          subtree: true // Watch for widgets being added/removed/moved
-        });
-      }
-    };
-    
-    // Initial observation
-    observeWidgets();
-    
-    // Also observe the document for new widgets being added
-    const widgetContainerObserver = new MutationObserver(() => {
-      observeWidgets();
-    });
-    
-    // CRITICAL: Continuous visibility check ALWAYS (not just during scroll)
-    // This ensures widgets stay visible even if Discourse's viewport tracker tries to hide them
-    // Run continuously using requestAnimationFrame to catch any hiding immediately
-    let lastVisibilityCheckTime = 0;
-    const VISIBILITY_CHECK_INTERVAL = 16; // Check every ~16ms (60fps)
-    
-    const continuousVisibilityCheck = () => {
-      const now = performance.now();
-      
-      // Only check if enough time has passed (throttle to ~60fps)
-      if (now - lastVisibilityCheckTime < VISIBILITY_CHECK_INTERVAL) {
-        requestAnimationFrame(continuousVisibilityCheck);
-        return;
-      }
-      
-      lastVisibilityCheckTime = now;
-      
-      // CRITICAL: Force visibility on ALL widgets EVERY frame
-      // Don't check if hidden - just force visibility always to prevent any flicker
-      const allWidgets = document.querySelectorAll('.tally-status-widget-container');
-      if (allWidgets.length > 0) {
-        allWidgets.forEach(widget => {
-          const computedStyle = window.getComputedStyle(widget);
-          const wasHidden = computedStyle.display === 'none' || 
-                           computedStyle.visibility === 'hidden' || 
-                           computedStyle.opacity === '0';
-          
-          // Force visibility immediately without checking - prevents any delay
-          widget.style.setProperty('display', 'block', 'important');
-          widget.style.setProperty('visibility', 'visible', 'important');
-          widget.style.setProperty('opacity', '1', 'important');
-          widget.classList.remove('hidden', 'd-none', 'is-hidden', 'cloaked');
-          
-          // Ensure all exclusion attributes are set
-          widget.setAttribute('data-cloak', 'false');
-          widget.setAttribute('data-skip-cloak', 'true');
-          widget.setAttribute('data-no-cloak', 'true');
-          widget.setAttribute('data-viewport', 'false');
-          widget.setAttribute('data-exclude-viewport', 'true');
-          widget.setAttribute('data-no-viewport-track', 'true');
-          widget.classList.add('no-viewport-track');
-          
-          markWidgetAsVisibleInCache(widget);
-          
-          // Log if we had to restore visibility
-          if (wasHidden) {
-            console.log(`🔵 [CONTINUOUS] Widget was hidden, forced visible - display: ${computedStyle.display}, visibility: ${computedStyle.visibility}`);
-          }
-        });
-      }
-      
-      // Also force container visibility every frame
-      const container = document.querySelector('.governance-widgets-wrapper');
-      if (container) {
-        const containerStyle = window.getComputedStyle(container);
-        const containerWasHidden = containerStyle.display === 'none' || 
-                                   containerStyle.visibility === 'hidden' || 
-                                   containerStyle.opacity === '0';
-        
-        container.style.setProperty('display', 'flex', 'important');
-        container.style.setProperty('visibility', 'visible', 'important');
-        container.style.setProperty('opacity', '1', 'important');
-        container.classList.remove('cloaked', 'hidden');
-        
-        // Ensure all exclusion attributes are set
-        container.setAttribute('data-cloak', 'false');
-        container.setAttribute('data-skip-cloak', 'true');
-        container.setAttribute('data-no-cloak', 'true');
-        container.setAttribute('data-viewport', 'false');
-        container.setAttribute('data-exclude-viewport', 'true');
-        container.setAttribute('data-no-viewport-track', 'true');
-        container.classList.add('no-viewport-track');
-        
-        if (containerWasHidden) {
-          console.log(`🔵 [CONTINUOUS] Container was hidden, forced visible`);
-        }
-      }
-      
-      // Continue checking ALWAYS (not just during scroll)
-      requestAnimationFrame(continuousVisibilityCheck);
-    };
-    
-    // Start continuous visibility check immediately
-    requestAnimationFrame(continuousVisibilityCheck);
-    
-    const topicBody = document.querySelector('.topic-body, .post-stream, .topic-post');
-    if (topicBody) {
-      widgetContainerObserver.observe(topicBody, {
-        childList: true,
-        subtree: true
-      });
-    }
-    
-    // Also observe document body for container changes
-    if (document.body) {
-      widgetContainerObserver.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    }
+    // FIXED: Removed extremely aggressive widgetVisibilityObserver that was:
+    // - Watching entire document subtree for visibility changes
+    // - Running continuous visibility checks at 60fps
+    // - Aggressively overriding Discourse's cloaking and viewport systems
+    // - Preventing normal Discourse UI behavior
+    // This was causing major UI clashes and performance issues
     
     // CRITICAL: Call immediately on page load for both mobile and desktop
     // This ensures widgets appear immediately without requiring scroll
@@ -10558,8 +9855,9 @@ export default apiInitializer((api) => {
       postObserver.observe(postStream, { childList: true, subtree: true });
     }
 
-    // Fallback: also use scroll event for posts not yet observed
-    window.addEventListener('scroll', updateWidgetForVisibleProposal, { passive: true });
+    // FIXED: Removed problematic scroll listener that was calling undefined function
+    // updateWidgetForVisibleProposal was not properly defined, causing potential errors
+    // Widget updates are now handled through MutationObserver only
     
       // Initial check: remove all widgets by default, then show only if current post has proposal
       const initialCheck = () => {
