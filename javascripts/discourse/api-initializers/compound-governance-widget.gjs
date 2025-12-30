@@ -2561,7 +2561,9 @@ export default apiInitializer((api) => {
         container.style.setProperty('display', 'flex', 'important');
       } else {
         // Container not in body, re-append it
-        document.body.appendChild(container);
+        preserveScrollPosition(() => {
+          document.body.appendChild(container);
+        });
         container.style.setProperty('display', 'flex', 'important');
       }
       
@@ -2594,18 +2596,20 @@ export default apiInitializer((api) => {
           });
           
           // Move each widget to container
-          widgetsToMove.forEach(widget => {
-            // Update widget styles for desktop (fixed positioning in container)
-            widget.style.setProperty('position', 'relative', 'important');
-            widget.style.setProperty('left', 'auto', 'important');
-            widget.style.setProperty('right', 'auto', 'important');
-            widget.style.setProperty('top', 'auto', 'important');
-            widget.style.setProperty('width', '100%', 'important');
-            widget.style.setProperty('max-width', '100%', 'important');
-            widget.style.setProperty('margin-bottom', '12px', 'important');
-            
-            widget.remove();
-            container.appendChild(widget);
+          preserveScrollPosition(() => {
+            widgetsToMove.forEach(widget => {
+              // Update widget styles for desktop (fixed positioning in container)
+              widget.style.setProperty('position', 'relative', 'important');
+              widget.style.setProperty('left', 'auto', 'important');
+              widget.style.setProperty('right', 'auto', 'important');
+              widget.style.setProperty('top', 'auto', 'important');
+              widget.style.setProperty('width', '100%', 'important');
+              widget.style.setProperty('max-width', '100%', 'important');
+              widget.style.setProperty('margin-bottom', '12px', 'important');
+              
+              widget.remove();
+              container.appendChild(widget);
+            });
           });
           
           console.log(`✅ [RESIZE] Moved ${widgetsToMove.length} widget(s) to container`);
