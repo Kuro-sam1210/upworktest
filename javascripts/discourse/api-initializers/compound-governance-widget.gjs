@@ -2421,8 +2421,10 @@ export default apiInitializer((api) => {
       updateContainerPosition(container);
       
       // CRITICAL: Preserve scroll position when adding container to prevent auto-scrolling
-      preserveScrollPosition(() => {
-        document.body.appendChild(container);
+      waitForDiscourseScrollRestore(() => {
+        preserveScrollPosition(() => {
+          document.body.appendChild(container);
+        });
       });
       console.log("✅ [CONTAINER] Created widgets container for column layout");
       
@@ -3765,89 +3767,90 @@ export default apiInitializer((api) => {
       
       // Insert widget in correct order based on stage (temp-check -> arfc -> aip)
       // Widgets appear at top of proposal, before first post
-      // CRITICAL: Use requestAnimationFrame to batch DOM insertion and prevent blinking
-      requestAnimationFrame(() => {
-        preserveScrollPosition(() => {
-          try {
-            const topicBody = document.querySelector('.topic-body, .posts-wrapper, .post-stream, .topic-post-stream');
-            const firstPost = document.querySelector('.topic-post, .post, [data-post-id], article[data-post-id]');
-            
-            // Get proposal order for this widget (order in content, not stage order)
-            const thisProposalOrder = parseInt(statusWidget.getAttribute("data-proposal-order") || statusWidget.getAttribute("data-stage-order") || "999", 10);
-            
-            // Find all existing widgets in the insertion area
-            let widgetsContainer = null;
-            let existingWidgets = [];
-            
-            if (firstPost && firstPost.parentNode) {
-              // Find widgets before the first post
-              widgetsContainer = firstPost.parentNode;
-              const siblings = Array.from(firstPost.parentNode.children);
-              existingWidgets = siblings.filter(sibling => 
-                sibling.classList.contains('tally-status-widget-container') && 
-                siblings.indexOf(sibling) < siblings.indexOf(firstPost)
-              );
-            } else if (topicBody) {
-              widgetsContainer = topicBody;
-              existingWidgets = Array.from(topicBody.querySelectorAll('.tally-status-widget-container'));
-            } else {
-              const mainContent = document.querySelector('main, .topic-body, .posts-wrapper, [role="main"]');
-              if (mainContent) {
-                widgetsContainer = mainContent;
-                existingWidgets = Array.from(mainContent.querySelectorAll('.tally-status-widget-container'));
-              }
-            }
-            
-            if (widgetsContainer && existingWidgets.length > 0) {
-              // Sort existing widgets by proposal order to ensure correct positioning
-              const sortedWidgets = [...existingWidgets].sort((a, b) => {
-                const orderA = parseInt(a.getAttribute("data-proposal-order") || a.getAttribute("data-stage-order") || "999", 10);
-                const orderB = parseInt(b.getAttribute("data-proposal-order") || b.getAttribute("data-stage-order") || "999", 10);
-                return orderA - orderB; // Ascending order (0, 1, 2, ...)
-              });
+      // CRITICAL: Wait for Discourse scroll restore before inserting to prevent scroll conflicts
+      waitForDiscourseScrollRestore(() => {
+        requestAnimationFrame(() => {
+          preserveScrollPosition(() => {
+            try {
+              const topicBody = document.querySelector('.topic-body, .posts-wrapper, .post-stream, .topic-post-stream');
+              const firstPost = document.querySelector('.topic-post, .post, [data-post-id], article[data-post-id]');
               
-              // Find the correct position to insert based on proposal order (order in content)
-              let insertBefore = null;
+              // Get proposal order for this widget (order in content, not stage order)
+              const thisProposalOrder = parseInt(statusWidget.getAttribute("data-proposal-order") || statusWidget.getAttribute("data-stage-order") || "999", 10);
               
-              // Find first widget with higher proposal order
-              for (const widget of sortedWidgets) {
-                const widgetProposalOrder = parseInt(widget.getAttribute("data-proposal-order") || widget.getAttribute("data-stage-order") || "999", 10);
-                if (widgetProposalOrder > thisProposalOrder) {
-                  insertBefore = widget;
-                  break;
+              // Find all existing widgets in the insertion area
+              let widgetsContainer = null;
+              let existingWidgets = [];
+              
+              if (firstPost && firstPost.parentNode) {
+                // Find widgets before the first post
+                widgetsContainer = firstPost.parentNode;
+                const siblings = Array.from(firstPost.parentNode.children);
+                existingWidgets = siblings.filter(sibling => 
+                  sibling.classList.contains('tally-status-widget-container') && 
+                  siblings.indexOf(sibling) < siblings.indexOf(firstPost)
+                );
+              } else if (topicBody) {
+                widgetsContainer = topicBody;
+                existingWidgets = Array.from(topicBody.querySelectorAll('.tally-status-widget-container'));
+              } else {
+                const mainContent = document.querySelector('main, .topic-body, .posts-wrapper, [role="main"]');
+                if (mainContent) {
+                  widgetsContainer = mainContent;
+                  existingWidgets = Array.from(mainContent.querySelectorAll('.tally-status-widget-container'));
                 }
               }
               
-              if (insertBefore) {
-                widgetsContainer.insertBefore(statusWidget, insertBefore);
-                console.log(`✅ [WIDGET] Widget inserted in correct order (proposal order: ${thisProposalOrder}, before widget with order: ${insertBefore.getAttribute("data-proposal-order")})`);
-              } else {
-                // No widget with higher order, insert at end (after all existing widgets, before first post)
-                if (firstPost && firstPost.parentNode) {
-                  // Insert before first post (which is after all widgets)
-                  firstPost.parentNode.insertBefore(statusWidget, firstPost);
-                } else if (topicBody) {
-                  // Append to topic body
-                  console.log("📌 [RENDER] Appending widget to topic body");
-                  topicBody.appendChild(statusWidget);
-                } else {
-                  const mainContent = document.querySelector('main, .topic-body, .posts-wrapper, [role="main"]');
-                  if (mainContent) {
-                    mainContent.appendChild(statusWidget);
-                  } else {
-                    document.body.appendChild(statusWidget);
+              if (widgetsContainer && existingWidgets.length > 0) {
+                // Sort existing widgets by proposal order to ensure correct positioning
+                const sortedWidgets = [...existingWidgets].sort((a, b) => {
+                  const orderA = parseInt(a.getAttribute("data-proposal-order") || a.getAttribute("data-stage-order") || "999", 10);
+                  const orderB = parseInt(b.getAttribute("data-proposal-order") || b.getAttribute("data-stage-order") || "999", 10);
+                  return orderA - orderB; // Ascending order (0, 1, 2, ...)
+                });
+                
+                // Find the correct position to insert based on proposal order (order in content)
+                let insertBefore = null;
+                
+                // Find first widget with higher proposal order
+                for (const widget of sortedWidgets) {
+                  const widgetProposalOrder = parseInt(widget.getAttribute("data-proposal-order") || widget.getAttribute("data-stage-order") || "999", 10);
+                  if (widgetProposalOrder > thisProposalOrder) {
+                    insertBefore = widget;
+                    break;
                   }
                 }
-                console.log(`✅ [WIDGET] Widget appended at end (proposal order: ${thisProposalOrder}) - highest order widget`);
-              }
-            } else {
-              // No existing widgets, insert before first post or at beginning
-              if (firstPost && firstPost.parentNode) {
-                firstPost.parentNode.insertBefore(statusWidget, firstPost);
-                console.log("✅ [WIDGET] Widget inserted before first post (first widget)");
-              } else if (topicBody) {
-                if (topicBody.firstChild) {
-                  topicBody.insertBefore(statusWidget, topicBody.firstChild);
+                
+                if (insertBefore) {
+                  widgetsContainer.insertBefore(statusWidget, insertBefore);
+                  console.log(`✅ [WIDGET] Widget inserted in correct order (proposal order: ${thisProposalOrder}, before widget with order: ${insertBefore.getAttribute("data-proposal-order")})`);
+                } else {
+                  // No widget with higher order, insert at end (after all existing widgets, before first post)
+                  if (firstPost && firstPost.parentNode) {
+                    // Insert before first post (which is after all widgets)
+                    firstPost.parentNode.insertBefore(statusWidget, firstPost);
+                  } else if (topicBody) {
+                    // Append to topic body
+                    console.log("📌 [RENDER] Appending widget to topic body");
+                    topicBody.appendChild(statusWidget);
+                  } else {
+                    const mainContent = document.querySelector('main, .topic-body, .posts-wrapper, [role="main"]');
+                    if (mainContent) {
+                      mainContent.appendChild(statusWidget);
+                    } else {
+                      document.body.appendChild(statusWidget);
+                    }
+                  }
+                  console.log(`✅ [WIDGET] Widget appended at end (proposal order: ${thisProposalOrder}) - highest order widget`);
+                }
+              } else {
+                // No existing widgets, insert before first post or at beginning
+                if (firstPost && firstPost.parentNode) {
+                  firstPost.parentNode.insertBefore(statusWidget, firstPost);
+                  console.log("✅ [WIDGET] Widget inserted before first post (first widget)");
+                } else if (topicBody) {
+                  if (topicBody.firstChild) {
+                    topicBody.insertBefore(statusWidget, topicBody.firstChild);
                 } else {
                   topicBody.appendChild(statusWidget);
                 }
@@ -3904,6 +3907,7 @@ export default apiInitializer((api) => {
           }
         });
       });
+      });
     } else {
       // Desktop/Large screens: Use fixed positioning on right side
       const widgetsContainer = getOrCreateWidgetsContainer();
@@ -3925,15 +3929,17 @@ export default apiInitializer((api) => {
         }
         
         // CRITICAL: Preserve scroll position during desktop widget insertion
-        preserveScrollPosition(() => {
-          if (insertBefore) {
-            widgetsContainer.insertBefore(statusWidget, insertBefore);
-            console.log(`✅ [DESKTOP] Widget inserted in correct order (proposal order: ${thisProposalOrder})`);
-          } else {
-            // No widget with higher order, append at end
-            widgetsContainer.appendChild(statusWidget);
-            console.log(`✅ [DESKTOP] Widget appended at end (proposal order: ${thisProposalOrder})`);
-          }
+        waitForDiscourseScrollRestore(() => {
+          preserveScrollPosition(() => {
+            if (insertBefore) {
+              widgetsContainer.insertBefore(statusWidget, insertBefore);
+              console.log(`✅ [DESKTOP] Widget inserted in correct order (proposal order: ${thisProposalOrder})`);
+            } else {
+              // No widget with higher order, append at end
+              widgetsContainer.appendChild(statusWidget);
+              console.log(`✅ [DESKTOP] Widget appended at end (proposal order: ${thisProposalOrder})`);
+            }
+          });
         });
         
         // CRITICAL: Force immediate visibility RIGHT AFTER insertion
@@ -6019,6 +6025,38 @@ export default apiInitializer((api) => {
     requestAnimationFrame(() => {
       window.scrollTo(0, scrollY);
     });
+  }
+
+  // Helper function to wait for Discourse scroll restore before inserting DOM elements
+  function waitForDiscourseScrollRestore(callback) {
+    // Discourse restores scroll ~300-800ms after load
+    // We wait until scroll position stabilizes (no change for 100ms)
+    let lastScroll = window.scrollY;
+    let stableCount = 0;
+    const maxAttempts = 50; // ~5 seconds max
+    let attempts = 0;
+
+    const check = () => {
+      attempts++;
+      const currentScroll = window.scrollY;
+
+      if (currentScroll === lastScroll) {
+        stableCount++;
+      } else {
+        stableCount = 0;
+        lastScroll = currentScroll;
+      }
+
+      if (stableCount >= 3 || attempts >= maxAttempts) {
+        // Scroll has stabilized — safe to insert
+        callback();
+      } else {
+        requestAnimationFrame(check);
+      }
+    };
+
+    // Start checking immediately
+    requestAnimationFrame(check);
   }
   
   // CRITICAL: Ensure all widgets are visible immediately after creation
@@ -9106,19 +9144,21 @@ export default apiInitializer((api) => {
       </div>
     `;
     
-    // Insert loader at widget insertion point
-    if (firstPost && firstPost.parentNode) {
-      firstPost.parentNode.insertBefore(mainWidgetLoader, firstPost);
-    } else if (topicBody) {
-      topicBody.insertBefore(mainWidgetLoader, topicBody.firstChild);
-    } else {
-      const mainContent = document.querySelector('main, [role="main"]');
-      if (mainContent) {
-        mainContent.insertBefore(mainWidgetLoader, mainContent.firstChild);
+    // Insert loader at widget insertion point (wait for scroll restore)
+    waitForDiscourseScrollRestore(() => {
+      if (firstPost && firstPost.parentNode) {
+        firstPost.parentNode.insertBefore(mainWidgetLoader, firstPost);
+      } else if (topicBody) {
+        topicBody.insertBefore(mainWidgetLoader, topicBody.firstChild);
+      } else {
+        const mainContent = document.querySelector('main, [role="main"]');
+        if (mainContent) {
+          mainContent.insertBefore(mainWidgetLoader, mainContent.firstChild);
+        }
       }
-    }
-    
-    console.log("🔵 [LOADER] Main widget loader shown");
+      
+      console.log("🔵 [LOADER] Main widget loader shown");
+    });
   }
   
   /**
