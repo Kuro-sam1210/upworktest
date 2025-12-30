@@ -1,4 +1,5 @@
 import { apiInitializer } from "discourse/lib/api";
+import { run } from "@ember/runloop";
 
 export default apiInitializer((api) => {
   // TEMPORARY TESTING: Added back aggressive scroll restoration and DOM manipulation
@@ -6030,8 +6031,8 @@ export default apiInitializer((api) => {
   // Helper function to wait for Discourse scroll restore before inserting DOM elements
   function waitForDiscourseScrollRestore(callback) {
     // Use Ember.run.next to ensure execution after Discourse's page change processing
-    Ember.run.next(() => {
-      Ember.run.next(() => {
+    run.next(() => {
+      run.next(() => {
         callback();
       });
     });
