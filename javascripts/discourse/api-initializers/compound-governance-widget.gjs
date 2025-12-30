@@ -3820,6 +3820,7 @@ export default apiInitializer((api) => {
                   firstPost.parentNode.insertBefore(statusWidget, firstPost);
                 } else if (topicBody) {
                   // Append to topic body
+                  console.log("📌 [RENDER] Appending widget to topic body");
                   topicBody.appendChild(statusWidget);
                 } else {
                   const mainContent = document.querySelector('main, .topic-body, .posts-wrapper, [role="main"]');
@@ -4155,9 +4156,11 @@ export default apiInitializer((api) => {
         console.log("✅ [REFRESH] Auto-refresh set up for active multi-stage widget:", widgetId, "(every 2 minutes)");
       }
     }
+    console.log("✅ [RENDER] renderStatusWidget completed for widgetId:", widgetId);
   }
 
   function renderStatusWidget(proposalData, originalUrl, widgetId, proposalInfo = null) {
+    console.log("🎨 [RENDER] renderStatusWidget called for URL:", originalUrl, "widgetId:", widgetId);
     const statusWidgetId = `aave-status-widget-${widgetId}`;
     const proposalType = proposalData.type || 'snapshot'; // 'snapshot' or 'aip'
     
@@ -5994,11 +5997,14 @@ export default apiInitializer((api) => {
   }
 
   // Helper function to preserve scroll position during DOM operations
-  // Simplified scroll position preservation (scroll locking removed)
-  // Simplified scroll position preservation (scroll locking removed)
+  // Preserve scroll position during DOM manipulations
   function preserveScrollPosition(callback) {
-    // Execute the callback without scroll preservation since scroll locking was removed
+    const scrollY = window.scrollY;
     callback();
+    // Use requestAnimationFrame to ensure DOM updates are complete before restoring scroll
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY);
+    });
   }
   
   // CRITICAL: Ensure all widgets are visible immediately after creation
@@ -6021,6 +6027,7 @@ export default apiInitializer((api) => {
   }
   
   function ensureAllWidgetsVisible() {
+    console.log("👁️ [VISIBILITY] ensureAllWidgetsVisible called");
     const allWidgets = document.querySelectorAll('.tally-status-widget-container');
     if (allWidgets.length === 0) {
       return; // No widgets yet
@@ -6790,14 +6797,13 @@ export default apiInitializer((api) => {
     const allProposals = findAllProposalsInTopic();
     
     console.log(`🔵 [TOPIC] Found ${allProposals.snapshot.length} Snapshot URL(s) and ${allProposals.aip.length} AIP URL(s) directly in post`);
-    
-    // TEMPORARY: Force widget rendering for testing - bypass proposal requirements
-    // Original condition: if (allProposals.snapshot.length > 0 || allProposals.aip.length > 0)
-    // For testing, always render widgets regardless of proposals found
-    const forceRenderForTesting = false;
+    console.log("🔵 [TOPIC] Snapshot URLs:", allProposals.snapshot);
+    console.log("🔵 [TOPIC] AIP URLs:", allProposals.aip);
+    const forceRenderForTesting = true;
     
     // Render widgets immediately if proposals found OR if force testing is enabled
     if (forceRenderForTesting || allProposals.snapshot.length > 0 || allProposals.aip.length > 0) {
+      console.log(`✅ [TOPIC] Widget condition met - forceRenderForTesting: ${forceRenderForTesting}, snapshot: ${allProposals.snapshot.length}, aip: ${allProposals.aip.length}`);
       // If forcing for testing and no proposals found, create dummy proposals
       let proposalsToUse = allProposals;
       if (forceRenderForTesting && allProposals.snapshot.length === 0 && allProposals.aip.length === 0) {
@@ -6828,6 +6834,9 @@ export default apiInitializer((api) => {
         widgetSetupCompleted = false;
         isWidgetSetupRunning = false;
       }
+    } else {
+      console.log(`❌ [TOPIC] Widget condition NOT met - forceRenderForTesting: ${forceRenderForTesting}, snapshot: ${allProposals.snapshot.length}, aip: ${allProposals.aip.length}`);
+      console.log("❌ [TOPIC] No proposals found and force testing disabled - widget will not show");
     }
     
     // CRITICAL: Retry to catch lazy-loaded content for BOTH Snapshot and AIP proposals
@@ -8195,6 +8204,7 @@ export default apiInitializer((api) => {
   // Separate function to set up widget with proposals (to allow re-running after extraction)
   // Render widgets - one per proposal URL
   function setupTopicWidgetWithProposals(allProposals) {
+    console.log("🔧 [TOPIC] setupTopicWidgetWithProposals called with:", allProposals);
     // CRITICAL: Only run on topic pages - prevent widgets from appearing on other pages
     const isTopicPage = window.location.pathname.match(/^\/t\//);
     if (!isTopicPage) {
