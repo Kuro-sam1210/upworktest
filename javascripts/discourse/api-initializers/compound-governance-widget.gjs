@@ -3768,6 +3768,42 @@ export default apiInitializer((api) => {
       
       // Insert widget in correct order based on stage (temp-check -> arfc -> aip)
       // Widgets appear at top of proposal, before first post
+      
+      // CHECK FOR PLACEHOLDER: If placeholder exists, append widget to it instead of inserting separately
+      const placeholder = document.getElementById('snapshot-widget-placeholder');
+      if (placeholder && placeholder.parentNode) {
+        // Check if placeholder still has loading content
+        const hasLoadingContent = placeholder.querySelector('.placeholder-content');
+        if (hasLoadingContent) {
+          // First widget - replace loading content with widget
+          placeholder.innerHTML = statusWidget.outerHTML;
+        } else {
+          // Subsequent widgets - append to placeholder
+          placeholder.insertAdjacentHTML('beforeend', statusWidget.outerHTML);
+        }
+        
+        // Copy attributes from the first widget to placeholder (for ID and classes)
+        if (hasLoadingContent) {
+          Array.from(statusWidget.attributes).forEach(attr => {
+            if (attr.name === 'id') {
+              placeholder.id = statusWidget.id; // Change placeholder ID to widget ID
+            } else {
+              placeholder.setAttribute(attr.name, attr.value);
+            }
+          });
+          // Copy classes
+          placeholder.className = statusWidget.className + ' snapshot-widget-placeholder';
+        }
+        
+        console.log(`✅ [PLACEHOLDER] ${hasLoadingContent ? 'Replaced' : 'Appended to'} placeholder with widget:`, statusWidget.id);
+        
+        // Remove URL from rendering set
+        if (proposalUrl) {
+          renderingUrls.delete(proposalUrl);
+          renderingUrls.delete(normalizeAIPUrl(proposalUrl));
+        }
+        return; // Exit - widget is now in placeholder
+      }
       // CRITICAL: Wait for Discourse scroll restore before inserting to prevent scroll conflicts
       waitForDiscourseScrollRestore(() => {
         requestAnimationFrame(() => {
@@ -6807,8 +6843,8 @@ export default apiInitializer((api) => {
     isWidgetSetupRunning = true;
     console.log("🔵 [TOPIC] Setting up widgets - one per proposal URL...");
     
-    // Show main loader to prevent blinking while widgets are being fetched
-    showMainWidgetLoader();
+    // Show placeholder immediately to reserve space
+    showWidgetPlaceholder();
     
     // Category filtering - only run in allowed categories
     const allowedCategories = []; // e.g., ['governance', 'proposals', 'aave-governance']
@@ -9054,8 +9090,9 @@ export default apiInitializer((api) => {
     
     // Hide main loader once widgets start appearing
     // Use a small delay to ensure widgets are rendered before hiding loader
+    // NOTE: With placeholder approach, loader is replaced by widgets automatically
     setTimeout(() => {
-      hideMainWidgetLoader();
+      // hideMainWidgetLoader(); // Not needed - placeholder gets replaced
     }, 100);
     
     // Ensure widgets are visible after a delay
@@ -9063,14 +9100,14 @@ export default apiInitializer((api) => {
       ensureAIPWidgetsVisible();
       console.log("✅ [TOPIC] Ensured all widgets are visible after processing all proposals");
       // Final check to hide loader if still visible
-      hideMainWidgetLoader();
+      // hideMainWidgetLoader(); // Not needed - placeholder gets replaced
     }, 500); // Give widgets time to render
     
     // Also ensure visibility after a short delay to catch any lazy-loaded widgets
     setTimeout(() => {
       ensureAIPWidgetsVisible();
       // Final hide of loader
-      hideMainWidgetLoader();
+      // hideMainWidgetLoader(); // Not needed - placeholder gets replaced
     }, 300);
   }
   
@@ -9090,18 +9127,19 @@ export default apiInitializer((api) => {
   let mainWidgetLoader = null;
   
   /**
-   * Show main loader at widget insertion point to prevent blinking
+   * Show placeholder immediately to reserve space (prevents layout shift)
    */
-  function showMainWidgetLoader() {
-    // Only show loader on topic pages
+  function showWidgetPlaceholder() {
+    // Only show placeholder on topic pages
     const isTopicPage = window.location.pathname.match(/^\/t\//);
     if (!isTopicPage) {
       return;
     }
     
-    // Remove existing loader if any
-    if (mainWidgetLoader && mainWidgetLoader.parentNode) {
-      mainWidgetLoader.remove();
+    // Remove existing placeholder if any
+    const existingPlaceholder = document.getElementById('snapshot-widget-placeholder');
+    if (existingPlaceholder) {
+      existingPlaceholder.remove();
     }
     
     // Find insertion point (where widgets will appear)
@@ -9112,32 +9150,84 @@ export default apiInitializer((api) => {
       return; // Can't find insertion point
     }
     
-    // Create loader element
-    mainWidgetLoader = document.createElement('div');
-    mainWidgetLoader.id = 'governance-widgets-main-loader';
-    mainWidgetLoader.className = 'governance-widgets-main-loader';
-    mainWidgetLoader.innerHTML = `
-      <div class="loader-content">
-        <div class="loading-spinner"></div>
-        <span class="loader-text">Loading governance proposals...</span>
+    // Create placeholder element immediately (no scroll waiting)
+    const placeholder = document.createElement('div');
+    placeholder.id = 'snapshot-widget-placeholder';
+    placeholder.className = 'snapshot-widget-placeholder';
+    
+    // Add CSS for fixed height
+    const style = document.createElement('style');
+    style.textContent = `
+      #snapshot-widget-placeholder {
+        min-height: 120px;
+        width: 100%;
+        display: block;
+        visibility: visible;
+        opacity: 1;
+        margin-bottom: 20px;
+      }
+      #snapshot-widget-placeholder.tally-status-widget-container {
+        min-height: auto; /* Allow natural height once widgets are loaded */
+      }
+      #snapshot-widget-placeholder .placeholder-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        color: #6c757d;
+      }
+      #snapshot-widget-placeholder .placeholder-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #e9ecef;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    placeholder.innerHTML = `
+      <div class="placeholder-content">
+        <div class="placeholder-spinner"></div>
+        <span class="placeholder-text">Loading governance proposals...</span>
       </div>
     `;
     
-    // Insert loader at widget insertion point (wait for scroll restore)
-    waitForDiscourseScrollRestore(() => {
-      if (firstPost && firstPost.parentNode) {
-        firstPost.parentNode.insertBefore(mainWidgetLoader, firstPost);
-      } else if (topicBody) {
-        topicBody.insertBefore(mainWidgetLoader, topicBody.firstChild);
-      } else {
-        const mainContent = document.querySelector('main, [role="main"]');
-        if (mainContent) {
-          mainContent.insertBefore(mainWidgetLoader, mainContent.firstChild);
-        }
+    // Insert placeholder immediately at widget insertion point
+    if (firstPost && firstPost.parentNode) {
+      firstPost.parentNode.insertBefore(placeholder, firstPost);
+    } else if (topicBody) {
+      topicBody.insertBefore(placeholder, topicBody.firstChild);
+    } else {
+      const mainContent = document.querySelector('main, [role="main"]');
+      if (mainContent) {
+        mainContent.insertBefore(placeholder, mainContent.firstChild);
       }
-      
-      console.log("🔵 [LOADER] Main widget loader shown");
-    });
+    }
+    
+    console.log("🔵 [PLACEHOLDER] Widget placeholder shown immediately");
+  }
+  
+  /**
+   * Replace placeholder contents with actual widgets (no height change)
+   */
+  function replacePlaceholderWithWidgets(widgetsHtml) {
+    const placeholder = document.getElementById('snapshot-widget-placeholder');
+    if (placeholder) {
+      placeholder.innerHTML = widgetsHtml;
+      console.log("✅ [PLACEHOLDER] Placeholder replaced with widgets");
+    } else {
+      console.warn("⚠️ [PLACEHOLDER] Placeholder not found for replacement");
+    }
   }
   
   /**
@@ -11118,6 +11208,11 @@ export default apiInitializer((api) => {
       const container = document.getElementById('governance-widgets-wrapper');
       if (container) {
         container.remove();
+      }
+      // Remove placeholder if it exists
+      const placeholder = document.getElementById('snapshot-widget-placeholder');
+      if (placeholder) {
+        placeholder.remove();
       }
       // Reset topic tracking
       widgetSetupCompleted = false;
