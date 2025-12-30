@@ -3648,7 +3648,9 @@ export default apiInitializer((api) => {
         // Fallback: update innerHTML but ensure visibility is maintained
         const wasVisible = statusWidget.style.display !== 'none' && 
                           statusWidget.style.visibility !== 'hidden';
-        statusWidget.innerHTML = widgetHTML;
+        preserveScrollPosition(() => {
+          statusWidget.innerHTML = widgetHTML;
+        });
         if (wasVisible) {
           statusWidget.style.display = 'block';
           statusWidget.style.visibility = 'visible';
@@ -3657,7 +3659,9 @@ export default apiInitializer((api) => {
       }
     } else {
       // New widget - set innerHTML directly
-      statusWidget.innerHTML = widgetHTML;
+      preserveScrollPosition(() => {
+        statusWidget.innerHTML = widgetHTML;
+      });
     }
     
     // Add close button handler
@@ -4756,7 +4760,9 @@ export default apiInitializer((api) => {
           // Fallback: update innerHTML but ensure visibility is maintained
           const wasVisible = statusWidget.style.display !== 'none' && 
                             statusWidget.style.visibility !== 'hidden';
-          statusWidget.innerHTML = widgetHTML;
+          preserveScrollPosition(() => {
+            statusWidget.innerHTML = widgetHTML;
+          });
           if (wasVisible) {
             statusWidget.style.display = 'block';
             statusWidget.style.visibility = 'visible';
@@ -4767,7 +4773,9 @@ export default apiInitializer((api) => {
         // Fallback: update innerHTML but ensure visibility is maintained
         const wasVisible = statusWidget.style.display !== 'none' && 
                           statusWidget.style.visibility !== 'hidden';
-        statusWidget.innerHTML = widgetHTML;
+        preserveScrollPosition(() => {
+          statusWidget.innerHTML = widgetHTML;
+        });
         if (wasVisible) {
           statusWidget.style.display = 'block';
           statusWidget.style.visibility = 'visible';
@@ -4776,7 +4784,9 @@ export default apiInitializer((api) => {
       }
     } else {
       // New widget - set innerHTML directly
-      statusWidget.innerHTML = widgetHTML;
+      preserveScrollPosition(() => {
+        statusWidget.innerHTML = widgetHTML;
+      });
     }
 
     // Add close button handler for this widget type
