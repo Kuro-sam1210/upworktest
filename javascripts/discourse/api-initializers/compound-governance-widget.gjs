@@ -6029,34 +6029,12 @@ export default apiInitializer((api) => {
 
   // Helper function to wait for Discourse scroll restore before inserting DOM elements
   function waitForDiscourseScrollRestore(callback) {
-    // Discourse restores scroll ~300-800ms after load
-    // We wait until scroll position stabilizes (no change for 100ms)
-    let lastScroll = window.scrollY;
-    let stableCount = 0;
-    const maxAttempts = 50; // ~5 seconds max
-    let attempts = 0;
-
-    const check = () => {
-      attempts++;
-      const currentScroll = window.scrollY;
-
-      if (currentScroll === lastScroll) {
-        stableCount++;
-      } else {
-        stableCount = 0;
-        lastScroll = currentScroll;
-      }
-
-      if (stableCount >= 3 || attempts >= maxAttempts) {
-        // Scroll has stabilized — safe to insert
+    // Use Ember.run.next to ensure execution after Discourse's page change processing
+    Ember.run.next(() => {
+      Ember.run.next(() => {
         callback();
-      } else {
-        requestAnimationFrame(check);
-      }
-    };
-
-    // Start checking immediately
-    requestAnimationFrame(check);
+      });
+    });
   }
   
   // CRITICAL: Ensure all widgets are visible immediately after creation
